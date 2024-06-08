@@ -3,10 +3,9 @@ import { } from '@koishijs/plugin-server'
 import { } from '@koishijs/plugin-database-sqlite'
 import crypto from 'crypto'
 
-declare module 'koishi' {
-  interface Tables {
-    webhook: Webhook
-  }
+export const name = 'github-webhook'
+export const inject = {
+  required: ['database', 'server'],
 }
 export interface mBot {
   // QQ群机器人
@@ -27,26 +26,22 @@ export interface mBot {
   sandboxBot: Bot<Context>
 }
 declare const mbot: mBot
-
 export interface Webhook {
   id: string
   platform: string
+}
+declare module 'koishi' {
+  interface Tables {
+    webhook: Webhook
+  }
 }
 export interface Config {
   secret: string
   path: string
 }
-export const name = 'github-webhook'
-export const inject = {
-  required: ['database', 'server'],
-}
 export const Config: Schema<Config> = Schema.object({
-  secret: Schema.string()
-    .required()
-    .description('输入你的Github Webhook secret'),
-  path: Schema.string()
-    .default('/webhook')
-    .description('输入你的Github Webhook payload路由路径'),
+  secret: Schema.string().required().description('输入你的Github Webhook secret'),
+  path: Schema.string().default('/webhook').description('输入你的Github Webhook payload路由路径'),
 })
 
 function sendCombineMessage(groupArray: Array<Webhook>, content: string) {
@@ -102,7 +97,7 @@ export function apply(ctx: Context, config: Config) {
     .action(async ({ session }) => {
       const groupId = session.guildId
       if (groupId) {
-        const query = await ctx.database.get('webhook', groupId)
+        const query = await ctx.database.get('webhook', groupId) as Array<Webhook>
         if (query.length === 0) {
           session.send('本群暂未订阅仓库事件！')
         }
