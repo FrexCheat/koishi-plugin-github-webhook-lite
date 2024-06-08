@@ -1,14 +1,14 @@
 {
   "name": "koishi-plugin-github-webhook-lite",
   "description": "基于Koishi-Server的GitHub Webhooks监听订阅插件",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contributors": [
     "Frex <frexdeveloper@gmail.com>"
   ],
-  "homepage": "https://github.com/FrexCheat/koishi-plugin-github-webhook",
+  "homepage": "https://github.com/FrexCheat/koishi-plugin-github-webhook-lite",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FrexCheat/koishi-plugin-github-webhook.git"
+    "url": "git+https://github.com/FrexCheat/koishi-plugin-github-webhook-lite.git"
   },
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
