@@ -7,24 +7,6 @@ export const name = 'github-webhook'
 export const inject = {
   required: ['database', 'server'],
 }
-export interface mBot {
-  // QQ群机器人
-  qqBot: Bot<Context>
-  // QQ频道机器人
-  qqguildBot: Bot<Context>
-  // OneBot机器人
-  oneBot: Bot<Context>
-  // Red机器人
-  redBot: Bot<Context>
-  // Telegram机器人
-  telegramBot: Bot<Context>
-  // Satori机器人
-  satoriBot: Bot<Context>
-  // Chronocat机器人
-  chronocatBot: Bot<Context>
-  // sandbox
-  sandboxBot: Bot<Context>
-}
 export interface Webhook {
   id: string
   platform: string
@@ -104,22 +86,40 @@ export function apply(ctx: Context, config: Config) {
       res.body = 'Forbidden'
       return
     }
+    const query = await ctx.database.get('webhook', {}) as Array<Webhook>
     const repo = payload.repository
     const sender = payload.sender
     const star = repo.stargazers_count
     if (event === 'star') {
       if (payload.action === 'created') {
-        const content = `用户 -${sender['login']}- star 仓库 -${repo['full_name']}- (共计 ${star} 个star)`
-        const query = await ctx.database.get('webhook', {}) as Array<Webhook>
+        const content = `用户 -${sender['login']}- [star]仓库 -${repo['full_name']}- (共计 ${star} 个star)`
         sendEventMessage(ctx, query, content)
       }
       if (payload.action === 'deleted') {
-        const content = `用户 -${sender['login']}- unstar 仓库 -${repo['full_name']}- (剩余 ${star} 个star)`
-        const query = await ctx.database.get('webhook', {}) as Array<Webhook>
+        const content = `用户 -${sender['login']}- [unstar]仓库 -${repo['full_name']}- (剩余 ${star} 个star)`
         sendEventMessage(ctx, query, content)
       }
     }
-
+    if (event === 'push') {
+      const pusher = payload.pusher
+      const commits = payload.commits as Array<any>
+      let content = `用户 -${pusher['name']}- [push]仓库 -${repo['full_name']}- (共计 ${star} 个star)：\n`
+      commits.forEach(comObject => { content = content.concat("-- " + comObject['message'] + "\n") })
+      content = content.concat(`详细内容：${payload.compare}`)
+      sendEventMessage(ctx, query, content)
+    }
+    if (event === 'workflow_run') {
+      if (payload.action === 'completed') {
+        const workDetial = payload.workflow_run
+        let content = `用户 -${sender['login']}- 发起仓库 -${repo['full_name']}- 的 Action：\n`
+        content = content.concat(`发起事件: [${workDetial.event}]\n`)
+        content = content.concat(`Action名称: [${workDetial.name}]\n`)
+        content = content.concat(`Action结果: [${workDetial.conclusion}]\n`)
+        content = content.concat(`相关Commits: [${workDetial.display_title}]\n`)
+        content = content.concat(`详细内容：[${workDetial.html_url}]`)
+        sendEventMessage(ctx, query, content)
+      }
+    }
     res.status = 200
     res.body = 'Webhook received'
   })
