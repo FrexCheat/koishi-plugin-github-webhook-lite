@@ -1,5 +1,5 @@
 {
-  "name": "koishi-plugin-github-webhook",
+  "name": "koishi-plugin-github-webhook-lite",
   "description": "基于Koishi-Server的GitHub Webhooks监听订阅插件",
   "version": "1.0.0",
   "contributors": [
