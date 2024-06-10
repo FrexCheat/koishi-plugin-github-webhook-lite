@@ -1,12 +1,11 @@
-import { Context, Schema, Bot } from 'koishi'
+import crypto from 'crypto'
+import { getGithubRegURL } from './regex'
+import { Context, Schema, Element, h } from 'koishi'
 import { } from '@koishijs/plugin-server'
 import { } from '@koishijs/plugin-database-sqlite'
-import crypto from 'crypto'
 
 export const name = 'github-webhook'
-export const inject = {
-  required: ['database', 'server'],
-}
+export const inject = { required: ['database', 'server'], }
 export interface Webhook {
   id: string
   platform: string
@@ -16,48 +15,49 @@ declare module 'koishi' {
     webhook: Webhook
   }
 }
+
 export interface Config {
   secret: string
   path: string
 }
 export const Config: Schema<Config> = Schema.object({
-  secret: Schema.string().required().description('输入你的Github Webhook secret'),
-  path: Schema.string().default('/webhook').description('输入你的Github Webhook payload路由路径'),
+  secret: Schema.string().required().description('输入Github Webhook secret'),
+  path: Schema.string().default('/github/webhook').description('输入Github Webhook路由路径'),
 })
 
-function sendEventMessage(_ctx: Context, groupArray: Array<Webhook>, content: string) {
+function sendEventMessage(_ctx: Context, groupArray: Array<Webhook>, msgElement: Element[]) {
   groupArray.forEach(obj => {
     try {
-      _ctx.broadcast([`${obj.platform}:${obj.id}`], content)
+      _ctx.broadcast([`${obj.platform}:${obj.id}`], msgElement)
     }
     catch (e) {
-      _ctx.logger('webhook-lite').warn(e)
+      _ctx.logger('webhook-lite').error(e)
     }
   })
 }
-
 export function apply(ctx: Context, config: Config) {
-  ctx.model.extend('webhook', {
-    id: 'string',
-    platform: 'string',
-  })
+  ctx.model.extend('webhook', { id: 'string', platform: 'string' })
 
-  const parentCmd = ctx.command('githubwh')
-  parentCmd.subcommand('wh-sub')
+  ctx.command('wh-sub', '订阅Github事件推送')
     .action(async ({ session }) => {
       const groupId = session.guildId
       const platform = session.platform
       if (groupId) {
-        await ctx.database.upsert('webhook', (row) => [
-          { id: groupId, platform: platform },
-        ])
-        session.send('本群订阅成功')
+        try {
+          await ctx.database.upsert('webhook', (row) => [{ id: groupId, platform: platform }])
+          session.send('本群订阅成功')
+        }
+        catch (e) {
+          session.send('数据插入失败！')
+          ctx.logger('webhook-lite').error(e)
+        }
       }
       else {
         session.send('本插件仅限群聊使用！')
       }
     })
-  parentCmd.subcommand('wh-unsub')
+
+  ctx.command('wh-unsub', '取消Github事件推送')
     .action(async ({ session }) => {
       const groupId = session.guildId
       if (groupId) {
@@ -90,23 +90,39 @@ export function apply(ctx: Context, config: Config) {
     const repo = payload.repository
     const sender = payload.sender
     const star = repo.stargazers_count
+    const originalUrl = repo['html_url']
     if (event === 'star') {
       if (payload.action === 'created') {
         const content = `用户 -${sender['login']}- [star]仓库 -${repo['full_name']}- (共计 ${star} 个star)`
-        sendEventMessage(ctx, query, content)
+        const regUrl = getGithubRegURL(originalUrl)
+        const hash = crypto.createHash('sha256').update(originalUrl).digest('hex').slice(0, 8)
+        const imgURL = { src: 'https://opengraph.githubassets.com/' + hash + regUrl }
+        const msgChain = [h('message', content, h('img', imgURL))] as Element[]
+        sendEventMessage(ctx, query, msgChain)
       }
       if (payload.action === 'deleted') {
         const content = `用户 -${sender['login']}- [unstar]仓库 -${repo['full_name']}- (剩余 ${star} 个star)`
-        sendEventMessage(ctx, query, content)
+        const regUrl = getGithubRegURL(originalUrl)
+        const hash = crypto.createHash('sha256').update(originalUrl).digest('hex').slice(0, 8)
+        const imgURL = { src: 'https://opengraph.githubassets.com/' + hash + regUrl }
+        const msgChain = [h('message', content, h('img', imgURL))] as Element[]
+        sendEventMessage(ctx, query, msgChain)
       }
     }
     if (event === 'push') {
       const pusher = payload.pusher
       const commits = payload.commits as Array<any>
+      const imgElements = [] as Element[]
       let content = `用户 -${pusher['name']}- [push]仓库 -${repo['full_name']}- (共计 ${star} 个star)：\n`
-      commits.forEach(comObject => { content = content.concat("-- " + comObject['message'] + "\n") })
+      commits.forEach(comObject => {
+        content = content.concat("-- " + comObject['message'] + "\n")
+        const imgHash = crypto.createHash('sha256').update(comObject['id']).digest('hex').slice(0, 8)
+        const urlRes = 'https://opengraph.githubassets.com/' + imgHash + getGithubRegURL(comObject['url'])
+        imgElements.push(h('img', { src: urlRes }))
+      })
       content = content.concat(`详细内容：${payload.compare}`)
-      sendEventMessage(ctx, query, content)
+      const msgChain = [h('message', content, imgElements)] as Element[]
+      sendEventMessage(ctx, query, msgChain)
     }
     if (event === 'workflow_run') {
       if (payload.action === 'completed') {
@@ -115,9 +131,10 @@ export function apply(ctx: Context, config: Config) {
         content = content.concat(`发起事件: [${workDetial.event}]\n`)
         content = content.concat(`Action名称: [${workDetial.name}]\n`)
         content = content.concat(`Action结果: [${workDetial.conclusion}]\n`)
-        content = content.concat(`相关Commits: [${workDetial.display_title}]\n`)
-        content = content.concat(`详细内容：[${workDetial.html_url}]`)
-        sendEventMessage(ctx, query, content)
+        content = content.concat(`相关Commit: [ ${workDetial.display_title} ]\n`)
+        content = content.concat(`详细内容：${workDetial.html_url}`)
+        const msgChain = [h('message', content)] as Element[]
+        sendEventMessage(ctx, query, msgChain)
       }
     }
     res.status = 200

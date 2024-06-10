@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-github-webhook-lite",
-  "description": "基于Koishi-Server的GitHub Webhooks监听订阅插件",
-  "version": "1.0.3",
+  "description": "基于koishi-server服务的GitHub Webhook事件监听订阅插件",
+  "version": "1.0.4",
   "contributors": [
     "Frex <frexdeveloper@gmail.com>"
   ],
@@ -27,10 +27,9 @@
     "koishi": "^4.17.8"
   },
   "koishi": {
-    "preview": true,
     "description": {
       "en": "None",
-      "zh": "订阅仓库监听事件"
+      "zh": "一个用于监听GitHub Webhook事件，并且可以在群聊中订阅事件推送的插件😘"
     },
     "service": {
       "required": [
@@ -40,7 +39,6 @@
     }
   },
   "dependencies": {
-    "@koishijs/plugin-database-sqlite": "^4.4.0",
     "@koishijs/plugin-server": "^3.2.3"
   }
 }
