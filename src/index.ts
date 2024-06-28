@@ -23,8 +23,8 @@ declare module 'koishi' {
 }
 
 export const Config: Schema<Config> = Schema.object({
-  secret: Schema.string().required().description('输入Github Webhook secret'),
-  path: Schema.string().default('/github/webhook').required().description('输入Github Webhook路由路径'),
+  secret: Schema.string().description('输入Github Webhook secret'),
+  path: Schema.string().default('/github/webhook').description('输入Github Webhook路由路径'),
 })
 
 function sendEventMessage(ctx: Context, groupArray: Array<Webhook>, msgElement: Element[]) {

@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-github-webhook-lite",
   "description": "基于koishi-server服务的全平台GitHub webhook事件推送插件",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "contributors": [
     "Frex <frexdeveloper@gmail.com>"
   ],
