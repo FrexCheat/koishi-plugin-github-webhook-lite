@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-github-webhook-lite",
-  "description": "基于koishi-server服务的GitHub Webhook事件监听订阅插件",
-  "version": "1.0.5",
+  "description": "基于koishi-server服务的全平台GitHub webhook事件推送插件",
+  "version": "1.0.6",
   "contributors": [
     "Frex <frexdeveloper@gmail.com>"
   ],
@@ -28,8 +28,8 @@
   },
   "koishi": {
     "description": {
-      "en": "None",
-      "zh": "一个用于监听GitHub Webhook事件，并且可以在群聊中订阅事件推送的插件😘"
+      "en": "A plugin to listen the events from Github webhook and send them to channels.",
+      "zh": "一个用于在群聊中推送GitHub webhook仓库事件信息的全平台插件😘"
     },
     "service": {
       "required": [

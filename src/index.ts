@@ -6,35 +6,42 @@ import { } from '@koishijs/plugin-database-sqlite'
 
 export const name = 'github-webhook'
 export const inject = { required: ['database', 'server'], }
+
+export interface Config {
+  secret: string
+  path: string
+}
 export interface Webhook {
   id: string
   platform: string
 }
+
 declare module 'koishi' {
   interface Tables {
     webhook: Webhook
   }
 }
 
-export interface Config {
-  secret: string
-  path: string
-}
 export const Config: Schema<Config> = Schema.object({
   secret: Schema.string().required().description('输入Github Webhook secret'),
-  path: Schema.string().default('/github/webhook').description('输入Github Webhook路由路径'),
+  path: Schema.string().default('/github/webhook').required().description('输入Github Webhook路由路径'),
 })
 
-function sendEventMessage(_ctx: Context, groupArray: Array<Webhook>, msgElement: Element[]) {
-  groupArray.forEach(obj => {
-    try {
-      _ctx.broadcast([`${obj.platform}:${obj.id}`], msgElement)
-    }
-    catch (e) {
-      _ctx.logger('webhook-lite').error(e)
-    }
+function sendEventMessage(ctx: Context, groupArray: Array<Webhook>, msgElement: Element[]) {
+  ctx.bots.forEach(botObj => {
+    groupArray.forEach(group => {
+      try {
+        if (group.platform.toLowerCase() === botObj.platform.toLowerCase()) {
+          ctx.bots[`${botObj.platform}:${botObj.selfId}`].sendMessage(`${group.id}`, msgElement)
+        }
+      }
+      catch (e) {
+        ctx.logger('webhook-lite').error(e)
+      }
+    })
   })
 }
+
 export function apply(ctx: Context, config: Config) {
   ctx.model.extend('webhook', { id: 'string', platform: 'string' })
 
@@ -90,20 +97,20 @@ export function apply(ctx: Context, config: Config) {
     const repo = payload.repository
     const sender = payload.sender
     const star = repo.stargazers_count
-    const originalUrl = repo['html_url']
+    const repoUrl = repo['html_url']
     if (event === 'star') {
       if (payload.action === 'created') {
         const content = `用户 -${sender['login']}- [star]仓库 -${repo['full_name']}- (共计 ${star} 个star)`
-        const regUrl = getGithubRegURL(originalUrl)
-        const hash = crypto.createHash('sha256').update(originalUrl).digest('hex').slice(0, 8)
+        const regUrl = getGithubRegURL(repoUrl)
+        const hash = crypto.createHash('sha256').update(new Date().toString()).digest('hex').slice(0, 8)
         const imgURL = { src: 'https://opengraph.githubassets.com/' + hash + regUrl }
         const msgChain = [h('message', content, h('img', imgURL))] as Element[]
         sendEventMessage(ctx, query, msgChain)
       }
       if (payload.action === 'deleted') {
         const content = `用户 -${sender['login']}- [unstar]仓库 -${repo['full_name']}- (剩余 ${star} 个star)`
-        const regUrl = getGithubRegURL(originalUrl)
-        const hash = crypto.createHash('sha256').update(originalUrl).digest('hex').slice(0, 8)
+        const regUrl = getGithubRegURL(repoUrl)
+        const hash = crypto.createHash('sha256').update(new Date().toString()).digest('hex').slice(0, 8)
         const imgURL = { src: 'https://opengraph.githubassets.com/' + hash + regUrl }
         const msgChain = [h('message', content, h('img', imgURL))] as Element[]
         sendEventMessage(ctx, query, msgChain)
